@@ -60,17 +60,17 @@ class TreeItem(QObject):
         self.tree_node = tree_node
 
 
-class RuntimeMonitorWidget(QWidget):
+class HazardStatusMonitorWidget(QWidget):
     def __init__(self, node, topic="diagnostics"):
-        super(RuntimeMonitorWidget, self).__init__()
-        _, package_path = get_resource('packages', 'rqt_runtime_monitor')
-        ui_file = os.path.join(package_path, 'share', 'rqt_runtime_monitor', 'resource', 'runtime_monitor_widget.ui')
+        super(HazardStatusMonitorWidget, self).__init__()
+        _, package_path = get_resource('packages', 'hazard_status_monitor')
+        ui_file = os.path.join(package_path, 'share', 'hazard_status_monitor', 'resource', 'hazard_status_monitor_widget.ui')
         loadUi(ui_file, self)
-        self.setObjectName('RuntimeMonitorWidget')
+        self.setObjectName('HazardStatusMonitorWidget')
 
         self._node = node
         self._logger = self._node.get_logger().get_child(
-            'rqt_runtime_monitor.RuntimeMonitorWidget')
+            'hazard_status_monitor.HazardStatusMonitorWidget')
 
         self._mutex = threading.Lock()
 

@@ -2,7 +2,7 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b rqt_runtime_monitor 
+\b hazard_status_monitor 
 
 <!-- 
 Provide an overview of your package.

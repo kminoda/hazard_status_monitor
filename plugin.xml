@@ -1,5 +1,5 @@
 <library path="src">
-  <class name="RuntimeMonitor" type="rqt_runtime_monitor.runtime_monitor.RuntimeMonitor" base_class_type="rqt_gui_py::Plugin">
+  <class name="HazardStatusMonitor" type="hazard_status_monitor.hazard_status_monitor.HazardStatusMonitor" base_class_type="rqt_gui_py::Plugin">
     <description>
       A Python GUI plugin for displaying diagnostics topics.
     </description>
@@ -9,7 +9,7 @@
         <icon type="theme">folder</icon>
         <statustip>Plugins related to robot tools.</statustip>
       </group>
-      <label>Runtime Monitor</label>
+      <label>Hazard Status Monitor</label>
       <icon type="theme">appointment-soon</icon>
       <statustip>A Python GUI plugin for displaying diagnostic information.</statustip>
     </qtgui>

@@ -36,16 +36,16 @@ from qt_gui.plugin import Plugin
 from rqt_gui.main import Main
 import sys
 
-from .runtime_monitor_widget import RuntimeMonitorWidget
+from .hazard_status_monitor_widget import HazardStatusMonitorWidget
 
 
-class RuntimeMonitor(Plugin):
+class HazardStatusMonitor(Plugin):
 
     def __init__(self, context):
-        super(RuntimeMonitor, self).__init__(context)
-        self.setObjectName('runtime_monitor')
+        super(HazardStatusMonitor, self).__init__(context)
+        self.setObjectName('hazard_status_monitor')
 
-        self._widget = RuntimeMonitorWidget(context.node)
+        self._widget = HazardStatusMonitorWidget(context.node)
         if context.serial_number() > 1:
             self._widget.setWindowTitle(self._widget.windowTitle() + (' (%d)' % context.serial_number()))
         context.add_widget(self._widget)
@@ -71,7 +71,7 @@ def main(args=None):
     sys.exit(
         main_obj.main(
             sys.argv,
-            standalone='rqt_runtime_monitor.runtime_monitor.RuntimeMonitor'))
+            standalone='hazard_status_monitor.hazard_status_monitor.HazardStatusMonitor'))
 
 
 if __name__ == '__main__':

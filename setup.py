@@ -2,7 +2,7 @@
 
 from setuptools import setup
 
-package_name = 'rqt_runtime_monitor'
+package_name = 'hazard_status_monitor'
 
 setup(
     name=package_name,
@@ -15,7 +15,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name, ['plugin.xml']),
         ('share/' + package_name + '/resource',
-         ['resource/runtime_monitor_widget.ui'])
+         ['resource/hazard_status_monitor_widget.ui'])
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -30,14 +30,14 @@ setup(
         'Topic :: Software Development',
     ],
     description=(
-        'rqt_runtime_monitor provides a GUI plugin viewing '
+        'hazard_status_monitor provides a GUI plugin viewing '
         'DiagnosticsArray messages.'
     ),
     license='BSD',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'rqt_runtime_monitor = rqt_runtime_monitor.runtime_monitor:main'
+            'hazard_status_monitor = hazard_status_monitor.hazard_status_monitor:main'
         ]
     }
 )
