@@ -211,8 +211,6 @@ class HazardStatusMonitorWidget(QWidget):
 
     def _update_item(self, item, status, fault_type, was_selected):
         change_parent = False
-        if status.name == '/autoware/perception/node_alive_monitoring':
-            print("/autoware/perception/node_alive_monitoring: ", fault_type, item.fault_type)
         if (item.fault_type != fault_type):
             change_parent = True
         if (change_parent):
