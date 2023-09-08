@@ -103,10 +103,10 @@ class HazardStatusMonitorWidget(QWidget):
 
         self._subscriber = self._node.create_subscription(HazardStatusStamped, topic, self._diagnostics_callback, 10)
 
-        self._previous_ros_time = self._node.get_clock().now()
-        self._timer = QTimer()
-        self._timer.timeout.connect(self._on_timer)
-        self._timer.start(1000)
+        # self._previous_ros_time = self._node.get_clock().now()
+        # self._timer = QTimer()
+        # self._timer.timeout.connect(self._on_timer)
+        # self._timer.start(1000)
 
         self._msg_timer = QTimer()
         self._msg_timer.timeout.connect(self._update_messages)
@@ -182,7 +182,8 @@ class HazardStatusMonitorWidget(QWidget):
             self._update_item(item, status, fault_type, was_selected)
         else:
             self._create_item(status, fault_type, was_selected, True)
-            if (status.level == DiagnosticStatus.ERROR):
+            has_error_now = fault_type == 'SinglePointFault' or fault_type == 'LatentFault'
+            if (has_error_now):
                 had_errors = True
 
     # Update display of messages from main thread
@@ -210,17 +211,11 @@ class HazardStatusMonitorWidget(QWidget):
 
     def _update_item(self, item, status, fault_type, was_selected):
         change_parent = False
-        if (item.status.level != status.level):
+        if status.name == '/autoware/perception/node_alive_monitoring':
+            print("/autoware/perception/node_alive_monitoring: ", fault_type, item.fault_type)
+        if (item.fault_type != fault_type):
             change_parent = True
         if (change_parent):
-            # if (item.status.level == DiagnosticStatus.OK):
-            #     self._no_fault_node.removeChild(item.tree_node)
-            # elif (item.status.level == DiagnosticStatus.WARN):
-            #     self._single_point_fault_node.removeChild(item.tree_node)
-            # elif (item.status.level == -1) or (item.status.level == DiagnosticStatus.STALE):
-            #     self._safe_fault_node.removeChild(item.tree_node)
-            # else: # ERROR
-            #     self._latent_fault_node.removeChild(item.tree_node)
             if (item.fault_type == 'NoFault'):
                 self._no_fault_node.removeChild(item.tree_node)
             elif (item.fault_type == 'SinglePointFault'):
@@ -232,14 +227,6 @@ class HazardStatusMonitorWidget(QWidget):
             else:
                 raise ValueError('Invalid fault type: ' + item.fault_type)
 
-            # if (status.level == DiagnosticStatus.OK):
-            #     parent_node = self._no_fault_node
-            # elif (status.level == DiagnosticStatus.WARN):
-            #     parent_node = self._single_point_fault_node
-            # elif (status.level == -1) or (status.level == DiagnosticStatus.STALE):
-            #     parent_node = self._safe_fault_node
-            # else: # ERROR
-            #     parent_node = self._latent_fault_node
             if (fault_type == 'NoFault'):
                 parent_node = self._no_fault_node
             elif (fault_type == 'SinglePointFault'):
@@ -268,6 +255,7 @@ class HazardStatusMonitorWidget(QWidget):
             item.tree_node.setText(0, status.name + ": " + status.message)
 
         item.status = status
+        item.fault_type = fault_type
 
         if (was_selected):
             self._fillout_info(item.tree_node)
@@ -310,11 +298,20 @@ class HazardStatusMonitorWidget(QWidget):
 
         scroll_value = self.html_browser.verticalScrollBar().value()
         status = item.status
+        level_int = int.from_bytes(status.level, byteorder='little')
+        if (status.level == DiagnosticStatus.OK):
+            level_str = "OK"
+        elif (status.level == DiagnosticStatus.WARN):
+            level_str = "WARN"
+        elif (status.level == DiagnosticStatus.ERROR):
+            level_str = "ERROR"
+        elif (status.level == DiagnosticStatus.STALE):
+            level_str = "STALE"
 
         s = StringIO()
 
         s.write("<html><body>")
-        s.write("<b>Level</b>: %s<br>\n" % (status.level))
+        s.write("<b>Level</b>: %s (%s)<br>\n" % (level_int, level_str))
         s.write("<b>Component</b>: %s<br>\n" % (status.name))
         s.write("<b>Message</b>: %s<br>\n" % (status.message))
         s.write("<b>Hardware ID</b>: %s<br><br>\n\n" % (status.hardware_id))
@@ -359,25 +356,25 @@ class HazardStatusMonitorWidget(QWidget):
         else:
             event.ignore()
 
-    def _on_timer(self):
-        if self._previous_ros_time + Duration(seconds=5) > self._node.get_clock().now():
-            return
-        self._previous_ros_time = self._node.get_clock().now()
-        for name, item in self._name_to_item.items():
-            node = item.tree_node
-            if (item != None):
-                if (not item.mark):
-                    was_selected = False
-                    selected = self.tree_widget.selectedItems()
-                    if selected != [] and selected[0] == node:
-                        was_selected = True
+    # def _on_timer(self):
+    #     if self._previous_ros_time + Duration(seconds=5) > self._node.get_clock().now():
+    #         return
+    #     self._previous_ros_time = self._node.get_clock().now()
+    #     for name, item in self._name_to_item.items():
+    #         node = item.tree_node
+    #         if (item != None):
+    #             if (not item.mark):
+    #                 was_selected = False
+    #                 selected = self.tree_widget.selectedItems()
+    #                 if selected != [] and selected[0] == node:
+    #                     was_selected = True
 
-                    new_status = copy.deepcopy(item.status)
-                    new_status.level = DiagnosticStatus.STALE
-                    self._update_item(item, new_status, was_selected)
-                item.mark = False
-        self._update_root_labels()
-        self.update()
+    #                 new_status = copy.deepcopy(item.status)
+    #                 new_status.level = DiagnosticStatus.STALE
+    #                 self._update_item(item, new_status, was_selected)
+    #             item.mark = False
+    #     self._update_root_labels()
+    #     self.update()
 
     def set_new_errors_callback(self, callback):
         self._new_errors_callback = callback
