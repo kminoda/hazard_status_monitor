@@ -53,9 +53,10 @@ from rclpy.duration import Duration
 class TreeItem(QObject):
     ##\param status DiagnosticsStatus : Diagnostic data of item
     ##\param tree_node wxTreeItemId : Tree ID of item in display
-    def __init__(self, status, tree_node):
+    def __init__(self, status, fault_type, tree_node):
         super(TreeItem, self).__init__()
         self.status = status
+        self.fault_type = fault_type
         self.mark = False
         self.stale = False
         self.tree_node = tree_node
@@ -79,8 +80,12 @@ class HazardStatusMonitorWidget(QWidget):
         self._warning_icon = QIcon.fromTheme('dialog-warning')
         self._ok_icon = QIcon.fromTheme('dialog-information')
 
+        self._no_fault_node = QTreeWidgetItem(self.tree_widget.invisibleRootItem(), ['No Faults (0)'])
+        self._no_fault_node.setIcon(0, self._ok_icon)
+        self.tree_widget.addTopLevelItem(self._no_fault_node)
+
         self._safe_fault_node = QTreeWidgetItem(self.tree_widget.invisibleRootItem(), ['Safe Faults (0)'])
-        self._safe_fault_node.setIcon(0, self._error_icon)
+        self._safe_fault_node.setIcon(0, self._warning_icon)
         self.tree_widget.addTopLevelItem(self._safe_fault_node)
 
         self._latent_fault_node = QTreeWidgetItem(self.tree_widget.invisibleRootItem(), ['Latent Faults (0)'])
@@ -88,12 +93,8 @@ class HazardStatusMonitorWidget(QWidget):
         self.tree_widget.addTopLevelItem(self._latent_fault_node)
 
         self._single_point_fault_node = QTreeWidgetItem(self.tree_widget.invisibleRootItem(), ['Single Point Faults (0)'])
-        self._single_point_fault_node.setIcon(0, self._warning_icon)
+        self._single_point_fault_node.setIcon(0, self._error_icon)
         self.tree_widget.addTopLevelItem(self._single_point_fault_node)
-
-        self._no_fault_node = QTreeWidgetItem(self.tree_widget.invisibleRootItem(), ['No Faults (0)'])
-        self._no_fault_node.setIcon(0, self._ok_icon)
-        self.tree_widget.addTopLevelItem(self._no_fault_node)
         self.tree_widget.itemSelectionChanged.connect(self._refresh_selection)
         self.keyPressEvent = self._on_key_press
 
@@ -174,7 +175,9 @@ class HazardStatusMonitorWidget(QWidget):
             item = self._name_to_item[status.name]
             if item.tree_node.isSelected():
                 was_selected = True
-            if (item.status.level == DiagnosticStatus.ERROR and status.level != DiagnosticStatus.ERROR):
+            has_error_now = fault_type == 'SinglePointFault' or fault_type == 'LatentFault'
+            has_error_before = item.fault_type == 'SinglePointFault' or item.fault_type == 'LatentFault'
+            if has_error_before and not has_error_now:
                 had_errors = True
             self._update_item(item, status, fault_type, was_selected)
         else:
@@ -191,13 +194,13 @@ class HazardStatusMonitorWidget(QWidget):
         had_errors = False
         for message in messages:
             for status in message.status.diag_no_fault:
-                self._update_with_status(status)
+                self._update_with_status(status, 'NoFault')
             for status in message.status.diag_safe_fault:
-                self._update_with_status(status)
+                self._update_with_status(status, 'SafeFault')
             for status in message.status.diag_latent_fault:
-                self._update_with_status(status)
+                self._update_with_status(status, 'LatentFault')
             for status in message.status.diag_single_point_fault:
-                self._update_with_status(status)
+                self._update_with_status(status, 'SinglePointFault')
         if (had_errors and self._new_errors_callback != None):
             self._new_errors_callback()
 
@@ -218,16 +221,16 @@ class HazardStatusMonitorWidget(QWidget):
             #     self._safe_fault_node.removeChild(item.tree_node)
             # else: # ERROR
             #     self._latent_fault_node.removeChild(item.tree_node)
-            if (fault_type == 'NoFault'):
+            if (item.fault_type == 'NoFault'):
                 self._no_fault_node.removeChild(item.tree_node)
-            elif (fault_type == 'SinglePointFault'):
+            elif (item.fault_type == 'SinglePointFault'):
                 self._single_point_fault_node.removeChild(item.tree_node)
-            elif (fault_type == 'SafeFault'):
+            elif (item.fault_type == 'SafeFault'):
                 self._safe_fault_node.removeChild(item.tree_node)
-            elif (fault_type == 'LatentFault'):
+            elif (item.fault_type == 'LatentFault'):
                 self._latent_fault_node.removeChild(item.tree_node)
             else:
-                raise ValueError('Invalid fault type: ' + fault_type)
+                raise ValueError('Invalid fault type: ' + item.fault_type)
 
             # if (status.level == DiagnosticStatus.OK):
             #     parent_node = self._no_fault_node
@@ -253,8 +256,7 @@ class HazardStatusMonitorWidget(QWidget):
             parent_node.addChild(item.tree_node)
 
             # expand errors automatically
-            level_int = int.from_bytes(status.level, byteorder='little')
-            if level_int > 1 or level_int == -1:
+            if fault_type == 'SinglePointFault' or fault_type == 'LatentFault':
                 parent_node.setExpanded(True)
 
             parent_node.sortChildren(0, Qt.AscendingOrder)
@@ -284,7 +286,7 @@ class HazardStatusMonitorWidget(QWidget):
         else:
             raise ValueError('Invalid fault type: ' + fault_type)
 
-        item = TreeItem(status, QTreeWidgetItem(parent_node, [status.name + ": " + status.message]))
+        item = TreeItem(status, fault_type, QTreeWidgetItem(parent_node, [status.name + ": " + status.message]))
         item.tree_node.setData(0, Qt.UserRole, item)
         parent_node.addChild(item.tree_node)
 
@@ -295,10 +297,8 @@ class HazardStatusMonitorWidget(QWidget):
         if (select):
             item.tree_node.setSelected(True)
 
-        status_int = int.from_bytes(status.level, byteorder='little')
-        if expand_if_error and (status_int > 1 or status_int == -1):
+        if fault_type == 'SinglePointFault' or fault_type == 'LatentFault':
             parent_node.setExpanded(True)
-
         item.mark = True
 
         return item
@@ -314,6 +314,7 @@ class HazardStatusMonitorWidget(QWidget):
         s = StringIO()
 
         s.write("<html><body>")
+        s.write("<b>Level</b>: %s<br>\n" % (status.level))
         s.write("<b>Component</b>: %s<br>\n" % (status.name))
         s.write("<b>Message</b>: %s<br>\n" % (status.message))
         s.write("<b>Hardware ID</b>: %s<br><br>\n\n" % (status.hardware_id))
@@ -341,14 +342,16 @@ class HazardStatusMonitorWidget(QWidget):
             nodes = self.tree_widget.selectedItems()
             if (nodes != [] and nodes[0] not in (self._no_fault_node, self._single_point_fault_node, self._safe_fault_node, self._latent_fault_node)):
                 item = nodes[0].data(0, Qt.UserRole)
-                if (item.status.level == 0):
+                if (item.fault_type == 'NoFault'):
                     self._no_fault_node.removeChild(item.tree_node)
-                elif (item.status.level == 1):
+                elif (item.fault_type == 'SinglePointFault'):
                     self._single_point_fault_node.removeChild(item.tree_node)
-                elif (item.status.level == -1) or (item.status.level == DiagnosticStatus.STALE):
+                elif (item.fault_type == 'SafeFault'):
                     self._safe_fault_node.removeChild(item.tree_node)
-                else:
+                elif (item.fault_type == 'LatentFault'):
                     self._latent_fault_node.removeChild(item.tree_node)
+                else:
+                    raise ValueError('Invalid fault type: ' + item.fault_type)
                 del self._name_to_item[item.status.name]
             self._update_root_labels()
             self.update()
